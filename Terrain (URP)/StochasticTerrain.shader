@@ -6,7 +6,7 @@ Shader "Universal Render Pipeline/Terrain/StochasticTerrain"
         _HeightTransition("Height Transition", Range(0, 1.0)) = 0.0
         // Layer count is passed down to guide height-blend enable/disable, due
         // to the fact that heigh-based blend will be broken with multipass.
-        [HideInInspector][PerRendererData] _NumLayersCount("Total Layer Count", Float) = 1.0
+        [HideInInspector] [PerRendererData] _NumLayersCount ("Total Layer Count", Float) = 1.0
 
         // set by terrain engine
         [HideInInspector] _Control("Control (RGBA)", 2D) = "red" {}
@@ -31,246 +31,259 @@ Shader "Universal Render Pipeline/Terrain/StochasticTerrain"
         [HideInInspector] _Smoothness2("Smoothness 2", Range(0.0, 1.0)) = 0.5
         [HideInInspector] _Smoothness3("Smoothness 3", Range(0.0, 1.0)) = 0.5
 
-            // used in fallback on old cards & base map
-            [HideInInspector] _MainTex("BaseMap (RGB)", 2D) = "grey" {}
-            [HideInInspector] _BaseColor("Main Color", Color) = (1,1,1,1)
+        // used in fallback on old cards & base map
+        [HideInInspector] _MainTex("BaseMap (RGB)", 2D) = "grey" {}
+        [HideInInspector] _BaseColor("Main Color", Color) = (1,1,1,1)
 
-            [HideInInspector] _TerrainHolesTexture("Holes Map (RGB)", 2D) = "white" {}
+        [HideInInspector] _TerrainHolesTexture("Holes Map (RGB)", 2D) = "white" {}
 
-            [ToggleUI] _EnableInstancedPerPixelNormal("Enable Instanced per-pixel normal", Float) = 1.0
+        [ToggleUI] _EnableInstancedPerPixelNormal("Enable Instanced per-pixel normal", Float) = 1.0
     }
 
-        HLSLINCLUDE
+    HLSLINCLUDE
 
-            #pragma multi_compile_fragment __ _ALPHATEST_ON
+    #pragma multi_compile_fragment __ _ALPHATEST_ON
 
-                ENDHLSL
+    ENDHLSL
 
-                SubShader
-            {
-                Tags { "Queue" = "Geometry-100" "RenderType" = "Opaque" "RenderPipeline" = "UniversalPipeline" "UniversalMaterialType" = "Lit" "IgnoreProjector" = "False" "TerrainCompatible" = "True"}
+    SubShader
+    {
+        Tags { "Queue" = "Geometry-100" "RenderType" = "Opaque" "RenderPipeline" = "UniversalPipeline" "UniversalMaterialType" = "Lit" "IgnoreProjector" = "False" "TerrainCompatible" = "True"}
 
-                Pass
-                {
-                    Name "ForwardLit"
-                    Tags { "LightMode" = "UniversalForward" }
-                    HLSLPROGRAM
-                    #pragma target 3.0
+        Pass
+        {
+            Name "ForwardLit"
+            Tags { "LightMode" = "UniversalForward" }
+            HLSLPROGRAM
+            #pragma target 3.0
 
-                    #pragma vertex SplatmapVert
-                    #pragma fragment SplatmapFragment
+            #pragma vertex SplatmapVert
+            #pragma fragment SplatmapFragment
 
-                    #define _METALLICSPECGLOSSMAP 1
-                    #define _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A 1
+            #define _METALLICSPECGLOSSMAP 1
+            #define _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A 1
 
-                // -------------------------------------
-                // Universal Pipeline keywords
-                #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
-                #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
-                #pragma multi_compile_fragment _ _ADDITIONAL_LIGHT_SHADOWS
-                #pragma multi_compile_fragment _ _REFLECTION_PROBE_BLENDING
-                #pragma multi_compile_fragment _ _SHADOWS_SOFT
-                #pragma multi_compile _ LIGHTMAP_SHADOW_MIXING
-                #pragma multi_compile _ SHADOWS_SHADOWMASK
-                #pragma multi_compile_fragment _ _SCREEN_SPACE_OCCLUSION
-                #pragma multi_compile_fragment _ _DBUFFER_MRT1 _DBUFFER_MRT2 _DBUFFER_MRT3
-                #pragma multi_compile_fragment _ _LIGHT_LAYERS
-                #pragma multi_compile_fragment _ _LIGHT_COOKIES
-                #pragma multi_compile _ _CLUSTERED_RENDERING
+            // -------------------------------------
+            // Universal Pipeline keywords
+            #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
+            #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
+            #pragma multi_compile _ LIGHTMAP_SHADOW_MIXING
+            #pragma multi_compile _ SHADOWS_SHADOWMASK
+            #pragma multi_compile _ _LIGHT_LAYERS
+            #pragma multi_compile _ _FORWARD_PLUS
+            #pragma multi_compile _ EVALUATE_SH_MIXED EVALUATE_SH_VERTEX
+            #pragma multi_compile_fragment _ _ADDITIONAL_LIGHT_SHADOWS
+            #pragma multi_compile_fragment _ _REFLECTION_PROBE_BLENDING
+            #pragma multi_compile_fragment _ _SHADOWS_SOFT _SHADOWS_SOFT_LOW _SHADOWS_SOFT_MEDIUM _SHADOWS_SOFT_HIGH
+            #pragma multi_compile_fragment _ _SCREEN_SPACE_OCCLUSION
+            #pragma multi_compile_fragment _ _DBUFFER_MRT1 _DBUFFER_MRT2 _DBUFFER_MRT3
+            #pragma multi_compile_fragment _ _LIGHT_COOKIES
+            #include_with_pragmas "Packages/com.unity.render-pipelines.core/ShaderLibrary/FoveatedRenderingKeywords.hlsl"
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/RenderingLayers.hlsl"
 
-                // -------------------------------------
-                // Unity defined keywords
-                #pragma multi_compile _ DIRLIGHTMAP_COMBINED
-                #pragma multi_compile _ LIGHTMAP_ON
-                #pragma multi_compile _ DYNAMICLIGHTMAP_ON
-                #pragma multi_compile_fog
-                #pragma multi_compile_fragment _ DEBUG_DISPLAY
-                #pragma multi_compile_instancing
-                #pragma instancing_options norenderinglayer assumeuniformscaling nomatrices nolightprobe nolightmap
+            // -------------------------------------
+            // Unity defined keywords
+            #pragma multi_compile _ DIRLIGHTMAP_COMBINED
+            #pragma multi_compile _ LIGHTMAP_ON
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/ProbeVolumeVariants.hlsl"
+            #pragma multi_compile _ DYNAMICLIGHTMAP_ON
+            #pragma multi_compile_fog
+            #pragma multi_compile_fragment _ DEBUG_DISPLAY
+            #pragma multi_compile_instancing
+            #pragma instancing_options assumeuniformscaling nomatrices nolightprobe nolightmap
 
-                #pragma shader_feature_local_fragment _TERRAIN_BLEND_HEIGHT
-                #pragma shader_feature_local _NORMALMAP
-                #pragma shader_feature_local_fragment _MASKMAP
-                // Sample normal in pixel shader when doing instancing
-                #pragma shader_feature_local _TERRAIN_INSTANCED_PERPIXEL_NORMAL
+            #pragma shader_feature_local_fragment _TERRAIN_BLEND_HEIGHT
+            #pragma shader_feature_local _NORMALMAP
+            #pragma shader_feature_local_fragment _MASKMAP
+            // Sample normal in pixel shader when doing instancing
+            #pragma shader_feature_local _TERRAIN_INSTANCED_PERPIXEL_NORMAL
 
-                #include "Packages/com.unity.render-pipelines.universal/Shaders/Terrain/TerrainLitInput.hlsl"
-                #include "StochasticTerrainPasses.hlsl"
-                ENDHLSL
-            }
+            #include "Packages/com.unity.render-pipelines.universal/Shaders/Terrain/TerrainLitInput.hlsl"
+            #include "StochasticTerrainPasses.hlsl"
+            ENDHLSL
+        }
 
-            Pass
-            {
-                Name "ShadowCaster"
-                Tags{"LightMode" = "ShadowCaster"}
+        Pass
+        {
+            Name "ShadowCaster"
+            Tags{"LightMode" = "ShadowCaster"}
 
-                ZWrite On
-                ColorMask 0
+            ZWrite On
+            ColorMask 0
 
-                HLSLPROGRAM
-                #pragma target 2.0
+            HLSLPROGRAM
+            #pragma target 2.0
 
-                #pragma vertex ShadowPassVertex
-                #pragma fragment ShadowPassFragment
+            #pragma vertex ShadowPassVertex
+            #pragma fragment ShadowPassFragment
 
-                #pragma multi_compile_instancing
-                #pragma instancing_options assumeuniformscaling nomatrices nolightprobe nolightmap
+            #pragma multi_compile_instancing
+            #pragma instancing_options assumeuniformscaling nomatrices nolightprobe nolightmap
 
-                // -------------------------------------
-                // Universal Pipeline keywords
+            // -------------------------------------
+            // Universal Pipeline keywords
 
-                // This is used during shadow map generation to differentiate between directional and punctual light shadows, as they use different formulas to apply Normal Bias
-                #pragma multi_compile_vertex _ _CASTING_PUNCTUAL_LIGHT_SHADOW
+            // This is used during shadow map generation to differentiate between directional and punctual light shadows, as they use different formulas to apply Normal Bias
+            #pragma multi_compile_vertex _ _CASTING_PUNCTUAL_LIGHT_SHADOW
 
-                #include "Packages/com.unity.render-pipelines.universal/Shaders/Terrain/TerrainLitInput.hlsl"
-                #include "StochasticTerrainPasses.hlsl"
-                ENDHLSL
-            }
+            #include "Packages/com.unity.render-pipelines.universal/Shaders/Terrain/TerrainLitInput.hlsl"
+            #include "StochasticTerrainPasses.hlsl"
+            ENDHLSL
+        }
 
-            Pass
-            {
-                Name "GBuffer"
-                Tags{"LightMode" = "UniversalGBuffer"}
+        Pass
+        {
+            Name "GBuffer"
+            Tags{"LightMode" = "UniversalGBuffer"}
 
-                HLSLPROGRAM
-                #pragma exclude_renderers gles
-                #pragma target 3.0
-                #pragma vertex SplatmapVert
-                #pragma fragment SplatmapFragment
+            HLSLPROGRAM
+            #pragma target 4.5
 
-                #define _METALLICSPECGLOSSMAP 1
-                #define _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A 1
+            // Deferred Rendering Path does not support the OpenGL-based graphics API:
+            // Desktop OpenGL, OpenGL ES 3.0, WebGL 2.0.
+            #pragma exclude_renderers gles3 glcore
 
-                // -------------------------------------
-                // Universal Pipeline keywords
-                #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
-                //#pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
-                //#pragma multi_compile _ _ADDITIONAL_LIGHT_SHADOWS
-                #pragma multi_compile_fragment _ _REFLECTION_PROBE_BLENDING
-                #pragma multi_compile_fragment _ _SHADOWS_SOFT
-                #pragma multi_compile _ _MIXED_LIGHTING_SUBTRACTIVE
-                #pragma multi_compile_fragment _ _DBUFFER_MRT1 _DBUFFER_MRT2 _DBUFFER_MRT3
-                #pragma multi_compile_fragment _ _LIGHT_LAYERS
+            #pragma vertex SplatmapVert
+            #pragma fragment SplatmapFragment
 
-                // -------------------------------------
-                // Unity defined keywords
-                #pragma multi_compile _ DIRLIGHTMAP_COMBINED
-                #pragma multi_compile _ LIGHTMAP_ON
-                #pragma multi_compile _ DYNAMICLIGHTMAP_ON
-                #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
-                #pragma multi_compile_fragment _ _RENDER_PASS_ENABLED
+            #define _METALLICSPECGLOSSMAP 1
+            #define _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A 1
 
-                //#pragma multi_compile_fog
-                #pragma multi_compile_instancing
-                #pragma instancing_options norenderinglayer assumeuniformscaling nomatrices nolightprobe nolightmap
+            // -------------------------------------
+            // Universal Pipeline keywords
+            #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
+            //#pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
+            //#pragma multi_compile _ _ADDITIONAL_LIGHT_SHADOWS
+            #pragma multi_compile_fragment _ _REFLECTION_PROBE_BLENDING
+            #pragma multi_compile_fragment _ _SHADOWS_SOFT _SHADOWS_SOFT_LOW _SHADOWS_SOFT_MEDIUM _SHADOWS_SOFT_HIGH
+            #pragma multi_compile _ _MIXED_LIGHTING_SUBTRACTIVE
+            #pragma multi_compile_fragment _ _DBUFFER_MRT1 _DBUFFER_MRT2 _DBUFFER_MRT3
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/RenderingLayers.hlsl"
 
-                #pragma shader_feature_local _TERRAIN_BLEND_HEIGHT
-                #pragma shader_feature_local _NORMALMAP
-                #pragma shader_feature_local _MASKMAP
-                // Sample normal in pixel shader when doing instancing
-                #pragma shader_feature_local _TERRAIN_INSTANCED_PERPIXEL_NORMAL
-                #define TERRAIN_GBUFFER 1
+            // -------------------------------------
+            // Unity defined keywords
+            #pragma multi_compile _ LIGHTMAP_SHADOW_MIXING
+            #pragma multi_compile _ SHADOWS_SHADOWMASK
+            #pragma multi_compile _ DIRLIGHTMAP_COMBINED
+            #pragma multi_compile _ LIGHTMAP_ON
+            #pragma multi_compile _ DYNAMICLIGHTMAP_ON
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/ProbeVolumeVariants.hlsl"
+            #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
+            #pragma multi_compile_fragment _ _RENDER_PASS_ENABLED
 
-                #include "Packages/com.unity.render-pipelines.universal/Shaders/Terrain/TerrainLitInput.hlsl"
-                #include "StochasticTerrainPasses.hlsl"
-                ENDHLSL
-            }
+            //#pragma multi_compile_fog
+            #pragma multi_compile_instancing
+            #pragma instancing_options assumeuniformscaling nomatrices nolightprobe nolightmap
 
-            Pass
-            {
-                Name "DepthOnly"
-                Tags{"LightMode" = "DepthOnly"}
+            #pragma shader_feature_local _TERRAIN_BLEND_HEIGHT
+            #pragma shader_feature_local _NORMALMAP
+            #pragma shader_feature_local _MASKMAP
+            // Sample normal in pixel shader when doing instancing
+            #pragma shader_feature_local _TERRAIN_INSTANCED_PERPIXEL_NORMAL
+            #define TERRAIN_GBUFFER 1
 
-                ZWrite On
-                ColorMask 0
+            #include "Packages/com.unity.render-pipelines.universal/Shaders/Terrain/TerrainLitInput.hlsl"
+            #include "StochasticTerrainPasses.hlsl"
+            ENDHLSL
+        }
 
-                HLSLPROGRAM
-                #pragma target 2.0
+        Pass
+        {
+            Name "DepthOnly"
+            Tags{"LightMode" = "DepthOnly"}
 
-                #pragma vertex DepthOnlyVertex
-                #pragma fragment DepthOnlyFragment
+            ZWrite On
+            ColorMask R
 
-                #pragma multi_compile_instancing
-                #pragma instancing_options assumeuniformscaling nomatrices nolightprobe nolightmap
+            HLSLPROGRAM
+            #pragma target 2.0
 
-                #include "Packages/com.unity.render-pipelines.universal/Shaders/Terrain/TerrainLitInput.hlsl"
-                #include "StochasticTerrainPasses.hlsl"
-                ENDHLSL
-            }
+            #pragma vertex DepthOnlyVertex
+            #pragma fragment DepthOnlyFragment
 
-                // This pass is used when drawing to a _CameraNormalsTexture texture
-                Pass
-                {
-                    Name "DepthNormals"
-                    Tags{"LightMode" = "DepthNormals"}
+            #pragma multi_compile_instancing
+            #pragma instancing_options assumeuniformscaling nomatrices nolightprobe nolightmap
 
-                    ZWrite On
+            #include "Packages/com.unity.render-pipelines.universal/Shaders/Terrain/TerrainLitInput.hlsl"
+            #include "StochasticTerrainPasses.hlsl"
+            ENDHLSL
+        }
 
-                    HLSLPROGRAM
-                    #pragma target 2.0
-                    #pragma vertex DepthNormalOnlyVertex
-                    #pragma fragment DepthNormalOnlyFragment
+        // This pass is used when drawing to a _CameraNormalsTexture texture
+        Pass
+        {
+            Name "DepthNormals"
+            Tags{"LightMode" = "DepthNormals"}
 
-                    #pragma shader_feature_local _NORMALMAP
-                    #pragma multi_compile_instancing
-                    #pragma instancing_options assumeuniformscaling nomatrices nolightprobe nolightmap
+            ZWrite On
 
-                    #include "Packages/com.unity.render-pipelines.universal/Shaders/Terrain/TerrainLitInput.hlsl"
-                    #include "Packages/com.unity.render-pipelines.universal/Shaders/Terrain/TerrainLitDepthNormalsPass.hlsl"
-                    ENDHLSL
-                }
+            HLSLPROGRAM
+            #pragma target 2.0
+            #pragma vertex DepthNormalOnlyVertex
+            #pragma fragment DepthNormalOnlyFragment
 
-                Pass
-                {
-                    Name "SceneSelectionPass"
-                    Tags { "LightMode" = "SceneSelectionPass" }
+            #pragma shader_feature_local _NORMALMAP
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/RenderingLayers.hlsl"
 
-                    HLSLPROGRAM
-                    #pragma target 2.0
+            #pragma multi_compile_instancing
+            #pragma instancing_options assumeuniformscaling nomatrices nolightprobe nolightmap
 
-                    #pragma vertex DepthOnlyVertex
-                    #pragma fragment DepthOnlyFragment
+            #include "Packages/com.unity.render-pipelines.universal/Shaders/Terrain/TerrainLitInput.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/Shaders/Terrain/TerrainLitDepthNormalsPass.hlsl"
+            ENDHLSL
+        }
 
-                    #pragma multi_compile_instancing
-                    #pragma instancing_options assumeuniformscaling nomatrices nolightprobe nolightmap
+        Pass
+        {
+            Name "SceneSelectionPass"
+            Tags { "LightMode" = "SceneSelectionPass" }
 
-                    #define SCENESELECTIONPASS
-                    #include "Packages/com.unity.render-pipelines.universal/Shaders/Terrain/TerrainLitInput.hlsl"
-                    #include "StochasticTerrainPasses.hlsl"
-                    ENDHLSL
-                }
+            HLSLPROGRAM
+            #pragma target 2.0
 
-                // This pass it not used during regular rendering, only for lightmap baking.
-                Pass
-                {
-                    Name "Meta"
-                    Tags{"LightMode" = "Meta"}
+            #pragma vertex DepthOnlyVertex
+            #pragma fragment DepthOnlyFragment
 
-                    Cull Off
+            #pragma multi_compile_instancing
+            #pragma instancing_options assumeuniformscaling nomatrices nolightprobe nolightmap
 
-                    HLSLPROGRAM
-                    #pragma vertex TerrainVertexMeta
-                    #pragma fragment TerrainFragmentMeta
+            #define SCENESELECTIONPASS
+            #include "Packages/com.unity.render-pipelines.universal/Shaders/Terrain/TerrainLitInput.hlsl"
+            #include "StochasticTerrainPasses.hlsl"
+            ENDHLSL
+        }
 
-                    #pragma multi_compile_instancing
-                    #pragma instancing_options assumeuniformscaling nomatrices nolightprobe nolightmap
-                    #pragma shader_feature EDITOR_VISUALIZATION
-                    #define _METALLICSPECGLOSSMAP 1
-                    #define _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A 1
+        // This pass it not used during regular rendering, only for lightmap baking.
+        Pass
+        {
+            Name "Meta"
+            Tags{"LightMode" = "Meta"}
 
-                    #include "Packages/com.unity.render-pipelines.universal/Shaders/Terrain/TerrainLitInput.hlsl"
-                    #include "Packages/com.unity.render-pipelines.universal/Shaders/Terrain/TerrainLitMetaPass.hlsl"
+            Cull Off
 
-                    ENDHLSL
-                }
+            HLSLPROGRAM
+            #pragma vertex TerrainVertexMeta
+            #pragma fragment TerrainFragmentMeta
 
-                UsePass "Hidden/Nature/Terrain/Utilities/PICKING"
-            }
-                Dependency "AddPassShader" = "Hidden/Universal Render Pipeline/Terrain/StochasticTerrain (Add Pass)"
-                Dependency "BaseMapShader" = "Hidden/Universal Render Pipeline/Terrain/Lit (Base Pass)"
-                Dependency "BaseMapGenShader" = "Hidden/Universal Render Pipeline/Terrain/Lit (Basemap Gen)"
+            #pragma multi_compile_instancing
+            #pragma instancing_options assumeuniformscaling nomatrices nolightprobe nolightmap
+            #pragma shader_feature EDITOR_VISUALIZATION
+            #define _METALLICSPECGLOSSMAP 1
+            #define _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A 1
 
-                CustomEditor "UnityEditor.Rendering.Universal.TerrainLitShaderGUI"
+            #include "Packages/com.unity.render-pipelines.universal/Shaders/Terrain/TerrainLitInput.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/Shaders/Terrain/TerrainLitMetaPass.hlsl"
 
-                Fallback "Hidden/Universal Render Pipeline/FallbackError"
+            ENDHLSL
+        }
+
+        UsePass "Hidden/Nature/Terrain/Utilities/PICKING"
+    }
+    Dependency "AddPassShader" = "Hidden/Universal Render Pipeline/Terrain/StochasticTerrain (Add Pass)"
+    Dependency "BaseMapShader" = "Hidden/Universal Render Pipeline/Terrain/Lit (Base Pass)"
+    Dependency "BaseMapGenShader" = "Hidden/Universal Render Pipeline/Terrain/Lit (Basemap Gen)"
+
+    CustomEditor "UnityEditor.Rendering.Universal.TerrainLitShaderGUI"
+
+    Fallback "Hidden/Universal Render Pipeline/FallbackError"
 }
